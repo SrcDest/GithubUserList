@@ -7,8 +7,12 @@
 //
 
 import UIKit
+import Kingfisher
 
 class UserListTableCell: TableBaseCell {
+    let orgCell = "orgCell"
+    var orgList: [[String : Any]] = []
+    
     let userProfileImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.backgroundColor = UIColor.lightGray
@@ -29,6 +33,15 @@ class UserListTableCell: TableBaseCell {
         label.textColor = UIColor.gray
         return label
     }()
+    let orgCollectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.backgroundColor = UIColor.clear
+        cv.showsHorizontalScrollIndicator = false
+        cv.showsVerticalScrollIndicator = false
+        cv.translatesAutoresizingMaskIntoConstraints = false
+        return cv
+    }()
     
     override func prepareForReuse() {
         userProfileImageView.image = nil
@@ -40,19 +53,49 @@ class UserListTableCell: TableBaseCell {
         self.addSubview(userProfileImageView)
         self.addSubview(userNameLabel)
         self.addSubview(scoreLabel)
+        self.addSubview(orgCollectionView)
+        
         userProfileImageView.snp.makeConstraints { (m) in
             m.height.width.equalTo(50)
-            m.left.equalTo(self).offset(12.5)
-            m.centerY.equalTo(self)
+            m.left.top.equalTo(self).offset(12.5)
         }
         userNameLabel.snp.makeConstraints { (m) in
-            m.bottom.equalTo(self.snp.centerY).offset(-1.5)
+            m.bottom.equalTo(userProfileImageView.snp.centerY).offset(-1.5)
             m.left.equalTo(userProfileImageView.snp.right).offset(5)
             m.right.equalTo(self).offset(-12.5)
         }
         scoreLabel.snp.makeConstraints { (m) in
-            m.top.equalTo(self.snp.centerY).offset(1.5)
+            m.top.equalTo(userProfileImageView.snp.centerY).offset(1.5)
             m.left.right.equalTo(userNameLabel)
         }
+        orgCollectionView.snp.makeConstraints { (m) in
+            m.top.equalTo(userProfileImageView.snp.bottom).offset(3)
+            m.left.equalTo(userProfileImageView)
+            m.right.equalTo(userNameLabel)
+            m.height.equalTo(40)
+        }
+        
+        orgCollectionView.dataSource = self
+        orgCollectionView.register(OrgCollectionViewCell.self, forCellWithReuseIdentifier: orgCell)
+        if let flowLayout = orgCollectionView.collectionViewLayout as? UICollectionViewFlowLayout {
+            flowLayout.scrollDirection = .horizontal
+            flowLayout.minimumLineSpacing = 5
+            flowLayout.itemSize = CGSize(width: 40, height: 40)
+        }
+    }
+}
+
+extension UserListTableCell: UICollectionViewDataSource {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return orgList.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: orgCell, for: indexPath) as! OrgCollectionViewCell
+        if let urlString = orgList[indexPath.item]["avatar_url"] as? String, let url = URL(string: urlString) {
+            cell.orgImageView.kf.setImage(with: url, options: [ .cacheMemoryOnly ])
+        }
+        
+        return cell
     }
 }

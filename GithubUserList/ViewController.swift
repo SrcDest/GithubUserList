@@ -17,6 +17,7 @@ class ViewController: UIViewController {
     let userCell = "userCell"
     let loadingCell = "loadingCell"
     var githubUserList: [[String : Any]] = []
+    var selectedIndexPath: [IndexPath] = []
     var fetchingMore = false
     var nextUrl: String?
     let debouncer = Debouncer(timeInterval: 0.5)
@@ -163,6 +164,62 @@ class ViewController: UIViewController {
         }
     }
     
+    func getUserOrgList(_ urlString: String, _ indexPath: IndexPath) {
+        if let url = URL(string: urlString) {
+            let task = URLSession.shared.dataTask(with: url) { (data, response, error) in
+                guard let data = data else { return }
+                var json: [[String : Any]]?
+                do {
+                    json = try JSONSerialization.jsonObject(with: data, options: []) as? [[String : Any]]
+                    if let jsonResult = json {
+                        if jsonResult.count != 0 {
+                            DispatchQueue.main.async {
+                                if let cell = self.userTableView.cellForRow(at: indexPath) as? UserListTableCell {
+                                    cell.orgList = jsonResult
+                                    cell.orgCollectionView.reloadData()
+                                    cell.orgCollectionView.isHidden = false
+                                    self.selectedIndexPath.append(indexPath)
+                                    self.userTableView.beginUpdates()
+                                    self.userTableView.endUpdates()
+                                }
+                            }
+                        }
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.selectedIndexPath.removeAll()
+                        self.userTableView.reloadData()
+                    }
+                }
+            }
+            
+            task.resume()
+        }
+    }
+    
+    @objc func didTapUserOrg(_ sender: UITapGestureRecognizer) {
+        if let view = sender.view {
+            let indexPath = IndexPath(row: view.tag, section: 0)
+            if selectedIndexPath.contains(indexPath) {
+                if let arrayIndex = selectedIndexPath.firstIndex(of: indexPath) {
+                    selectedIndexPath.remove(at: arrayIndex)
+                    if let cell = userTableView.cellForRow(at: indexPath) as? UserListTableCell {
+                        cell.orgList.removeAll()
+                        cell.orgCollectionView.reloadData()
+                        cell.orgCollectionView.isHidden = true
+                        self.userTableView.beginUpdates()
+                        self.userTableView.endUpdates()
+                    }
+                }
+            } else {
+                if let githubUserModel = GithubUserModel(JSON: githubUserList[indexPath.row]), let userNickname = githubUserModel.login {
+                    let urlString = "https://api.github.com/users/" + userNickname + "/orgs"
+                    getUserOrgList(urlString, indexPath)
+                }
+            }
+        }
+    }
+    
     @objc func dismissKeyboard() {
         self.view.endEditing(true)
     }
@@ -176,6 +233,7 @@ extension ViewController: UITextFieldDelegate {
         debouncer.renewInterval()
         
         userTableView.setContentOffset(.zero, animated: false)
+        selectedIndexPath.removeAll()
         let urlString = "https://api.github.com/search/users?q=" + searchKeyword
         getGithubUserList(urlString)
         return true
@@ -205,7 +263,11 @@ extension ViewController: UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 75
+        if selectedIndexPath.contains(indexPath) {
+            return 75 + 43
+        } else {
+            return 75
+        }
     }
 }
 
@@ -231,7 +293,12 @@ extension ViewController: UITableViewDataSource {
             let cell = tableView.dequeueReusableCell(withIdentifier: userCell, for: indexPath) as! UserListTableCell
             cell.selectionStyle = .none
             if let githubUserModel = GithubUserModel(JSON: githubUserList[indexPath.row]) {
+                let userNameLabelTap = UITapGestureRecognizer(target: self, action: #selector(didTapUserOrg(_:)))
+                let userProfileImageViewTap = UITapGestureRecognizer(target: self, action: #selector(didTapUserOrg(_:)))
                 cell.userNameLabel.text = githubUserModel.login
+                cell.userNameLabel.tag = indexPath.row
+                cell.userNameLabel.isUserInteractionEnabled = true
+                cell.userNameLabel.addGestureRecognizer(userNameLabelTap)
                 if let scoreString = githubUserModel.score?.description {
                     cell.scoreLabel.text = "score: " + scoreString
                 } else {
@@ -239,6 +306,14 @@ extension ViewController: UITableViewDataSource {
                 }
                 if let urlString = githubUserModel.avatar_url, let url = URL(string: urlString) {
                     cell.userProfileImageView.kf.setImage(with: url, options: [ .cacheMemoryOnly ])
+                }
+                cell.userProfileImageView.tag = indexPath.row
+                cell.userProfileImageView.isUserInteractionEnabled = true
+                cell.userProfileImageView.addGestureRecognizer(userProfileImageViewTap)
+                if selectedIndexPath.contains(indexPath) {
+                    cell.orgCollectionView.isHidden = false
+                } else {
+                    cell.orgCollectionView.isHidden = true
                 }
             }
             
