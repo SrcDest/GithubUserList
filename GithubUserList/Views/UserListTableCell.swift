@@ -13,6 +13,7 @@ class UserListTableCell: UITableViewCell {
         let imageView = UIImageView()
         imageView.backgroundColor = UIColor.lightGray
         imageView.layer.cornerRadius = 25
+        imageView.clipsToBounds = true
         return imageView
     }()
     let userNameLabel: UILabel = {
@@ -29,6 +30,11 @@ class UserListTableCell: UITableViewCell {
         return label
     }()
     
+    override func prepareForReuse() {
+        userProfileImageView.image = nil
+        userNameLabel.text = nil
+        scoreLabel.text = nil
+    }
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
