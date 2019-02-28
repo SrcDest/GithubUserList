@@ -7,5 +7,6 @@ target 'GithubUserList' do
 
   pod 'SnapKit', '~> 4.0.0'
   pod 'ObjectMapper'
+  pod 'Kingfisher'
 
 end
