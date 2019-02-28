@@ -57,6 +57,19 @@ class ViewController: UIViewController {
     
     // MARK:- Functions
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(notification:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(notification:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        NotificationCenter.default.removeObserver(self)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -198,6 +211,8 @@ class ViewController: UIViewController {
     }
     
     @objc func didTapUserOrg(_ sender: UITapGestureRecognizer) {
+        debouncer.renewInterval()
+        
         if let view = sender.view {
             let indexPath = IndexPath(row: view.tag, section: 0)
             if selectedIndexPath.contains(indexPath) {
@@ -218,6 +233,27 @@ class ViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    @objc func keyboardWillShow(notification: Notification) {
+        if let keyboardSize = (notification.userInfo![UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue {
+            userTableView.snp.remakeConstraints { (m) in
+                m.top.equalTo(searchTextfield.snp.bottom).offset(10)
+                m.left.right.equalTo(self.view)
+                m.bottom.equalTo(self.view).offset(-keyboardSize.height)
+            }
+            
+            view.layoutIfNeeded()
+        }
+    }
+    
+    @objc func keyboardWillHide(notification: Notification) {
+        userTableView.snp.remakeConstraints { (m) in
+            m.top.equalTo(searchTextfield.snp.bottom).offset(10)
+            m.left.right.bottom.equalTo(self.view)
+        }
+        
+        view.layoutIfNeeded()
     }
     
     @objc func dismissKeyboard() {
