@@ -8,7 +8,7 @@
 
 import UIKit
 
-class UserListTableCell: UITableViewCell {
+class UserListTableCell: TableBaseCell {
     let userProfileImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.backgroundColor = UIColor.lightGray
@@ -36,17 +36,7 @@ class UserListTableCell: UITableViewCell {
         scoreLabel.text = nil
     }
     
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        setupCell()
-    }
-    
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder)
-        setupCell()
-    }
-    
-    func setupCell() {
+    override func setupCell() {
         self.addSubview(userProfileImageView)
         self.addSubview(userNameLabel)
         self.addSubview(scoreLabel)
