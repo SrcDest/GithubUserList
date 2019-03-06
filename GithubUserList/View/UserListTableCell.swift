@@ -10,8 +10,13 @@ import UIKit
 import Kingfisher
 
 class UserListTableCell: TableBaseCell {
-    let orgCell = "orgCell"
+    
+    // MARK:- Properties
+    
+    fileprivate let orgCell = "orgCell"
     var orgList: [[String : Any]] = []
+    
+    // MARK: Controls
     
     let userProfileImageView: UIImageView = {
         let imageView = UIImageView()
@@ -42,6 +47,8 @@ class UserListTableCell: TableBaseCell {
         cv.translatesAutoresizingMaskIntoConstraints = false
         return cv
     }()
+    
+    // MARK:- Functions
     
     override func prepareForReuse() {
         userProfileImageView.image = nil
@@ -84,6 +91,8 @@ class UserListTableCell: TableBaseCell {
         }
     }
 }
+
+// MARK:- Extension
 
 extension UserListTableCell: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {

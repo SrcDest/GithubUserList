@@ -14,13 +14,14 @@ class ViewController: UIViewController {
 
     // MARK:- Properties
     
-    let userCell = "userCell"
-    let loadingCell = "loadingCell"
+    fileprivate let userCell = "userCell"
+    fileprivate let loadingCell = "loadingCell"
+    fileprivate let debouncer = Debouncer(timeInterval: 0.5)
+    
     var githubUserList: [[String : Any]] = []
     var selectedIndexPath: [IndexPath] = []
-    var fetchingMore = false
+    var fetchingMore: Bool = false
     var nextUrl: String?
-    let debouncer = Debouncer(timeInterval: 0.5)
     
     // MARK: Controls
     
@@ -283,7 +284,7 @@ extension ViewController: UITableViewDelegate {
         let offsetY = scrollView.contentOffset.y
         let contentHeight = scrollView.contentSize.height
         
-        if offsetY > contentHeight - scrollView.frame.height - 75 {
+        if offsetY > contentHeight - scrollView.frame.size.height {
             if !fetchingMore {
                 beginBatchFetch()
             }

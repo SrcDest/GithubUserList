@@ -13,6 +13,7 @@ class LoadingCell: TableBaseCell {
     let indicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(frame: CGRect(x: 0, y: 0, width: 50, height: 50))
         indicator.style = .white
+        indicator.color = UIColor.red
         return indicator
     }()
 
