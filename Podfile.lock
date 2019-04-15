@@ -1,24 +1,28 @@
 PODS:
+  - FSPagerView (0.8.2)
   - Kingfisher (5.1.0)
   - ObjectMapper (3.4.2)
   - SnapKit (4.0.1)
 
 DEPENDENCIES:
+  - FSPagerView
   - Kingfisher
   - ObjectMapper
   - SnapKit (~> 4.0.0)
 
 SPEC REPOS:
   https://github.com/cocoapods/specs.git:
+    - FSPagerView
     - Kingfisher
     - ObjectMapper
     - SnapKit
 
 SPEC CHECKSUMS:
+  FSPagerView: 816a18842306973cc7cc6df8a5332272f7815c30
   Kingfisher: fcec238063d17404fca89bf0a850583211c4cbf6
   ObjectMapper: 0d4402610f4e468903ae64629eec4784531e5c51
   SnapKit: 0de968a9fec17499afa29683b05d0c775b6d1c29
 
-PODFILE CHECKSUM: ee8bdf32bae97e1e61d5e988456461424c0ea3c6
+PODFILE CHECKSUM: 4055b63ed43f13c50bb0626cab442d17cef32a85
 
 COCOAPODS: 1.6.0.beta.1

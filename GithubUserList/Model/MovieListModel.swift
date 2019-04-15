@@ -1,5 +1,5 @@
 //
-//  GIthubUserModel.swift
+//  MovieListModel.swift
 //  GithubUserList
 //
 //  Created by shhan2 on 28/02/2019.
@@ -8,10 +8,9 @@
 
 import ObjectMapper
 
-class GithubUserModel: Mappable {
-    public var login: String?
-    public var avatar_url: String?
-    public var score: Float?
+class MovieListModel: Mappable {
+    public var movie_count: Int?
+    public var movies: [MovieModel] = []
     
     public init() {
         
@@ -22,8 +21,7 @@ class GithubUserModel: Mappable {
     }
     
     public func mapping(map: Map) {
-        login <- map["login"]
-        avatar_url <- map["avatar_url"]
-        score <- map["score"]
-    }
+        movie_count <- map["movie_count"]
+        movies <- map["movies"]
+    }    
 }

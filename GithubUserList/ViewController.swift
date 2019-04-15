@@ -18,10 +18,12 @@ class ViewController: UIViewController {
     fileprivate let loadingCell = "loadingCell"
     fileprivate let debouncer = Debouncer(timeInterval: 0.5)
     
-    var githubUserList: [[String : Any]] = []
-    var selectedIndexPath: [IndexPath] = []
+    var selectedIndex: Int?
+    var movieModelList: [MovieModel] = []
     var fetchingMore: Bool = false
     var nextUrl: String?
+    var pageNum: Int = 1
+    var searchKeyword: String = ""
     
     // MARK: Controls
     
@@ -41,15 +43,15 @@ class ViewController: UIViewController {
         textField.returnKeyType = .search
         textField.borderStyle = .roundedRect
         textField.delegate = self
-        textField.placeholder = "Input Github user nickname !"
+        textField.placeholder = "Input movie title !"
         
         return textField
     }()
-    lazy var userTableView: UITableView = {
+    lazy var movieTableView: UITableView = {
         let tableView = UITableView()
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.separatorStyle = .none
-        tableView.register(UserListTableCell.self, forCellReuseIdentifier: userCell)
+        tableView.register(MovieListTableCell.self, forCellReuseIdentifier: userCell)
         tableView.register(LoadingCell.self, forCellReuseIdentifier: loadingCell)
         tableView.delegate = self
         tableView.dataSource = self
@@ -60,6 +62,8 @@ class ViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        self.navigationController?.navigationBar.isHidden = true
         
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(notification:)), name: UIResponder.keyboardWillShowNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(notification:)), name: UIResponder.keyboardWillHideNotification, object: nil)
@@ -78,7 +82,7 @@ class ViewController: UIViewController {
         let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         self.view.addGestureRecognizer(tap)
         debouncer.handler = {
-            print("Send github api request")
+            print("Send movie api request")
         }
     }
     
@@ -92,8 +96,8 @@ class ViewController: UIViewController {
             m.right.equalTo(self.view).offset(-10)
             m.height.equalTo(30)
         }
-        self.view.addSubview(userTableView)
-        userTableView.snp.makeConstraints { (m) in
+        self.view.addSubview(movieTableView)
+        movieTableView.snp.makeConstraints { (m) in
             m.top.equalTo(searchTextfield.snp.bottom).offset(10)
             m.left.right.bottom.equalTo(self.view)
         }
@@ -101,7 +105,7 @@ class ViewController: UIViewController {
         nothingLabel.snp.makeConstraints { (m) in
             m.centerX.centerY.equalTo(self.view)
         }
-        userTableView.addSubview(indicator)
+        movieTableView.addSubview(indicator)
         indicator.style = .white
         indicator.color = UIColor.red
         indicator.snp.makeConstraints { (m) in
@@ -109,7 +113,7 @@ class ViewController: UIViewController {
         }
     }
     
-    func getGithubUserList(_ urlString: String) {
+    func getMovieList(_ urlString: String) {
         nothingLabel.isHidden = true
         if !fetchingMore {
             indicator.startAnimating()
@@ -117,45 +121,33 @@ class ViewController: UIViewController {
         
         if let url = URL(string: urlString) {
             let task = URLSession.shared.dataTask(with: url) { (data, response, error) in
-                guard let data = data,
-                        let response = response else { return }
-                if let httpResponse = response as? HTTPURLResponse {
-                    if let link = httpResponse.allHeaderFields["Link"] as? String {
-                        let stringArr = link.components(separatedBy: ",")
-                        for string in stringArr {
-                            if string.contains("rel=\"next\"") {
-                                let nextUrlString = string.components(separatedBy: ";")
-                                self.nextUrl = nextUrlString[0].trimmingCharacters(in: [ " ", "<", ">"])
-                                break
-                            }
-                        }
-                    } else {
-                        self.nextUrl = nil
-                    }
-                }
+                guard let data = data else { return }
                 
                 var json: [String : Any]?
                 do {
                     json = try JSONSerialization.jsonObject(with: data, options: []) as? [String : Any]
-                    if let json = json, let userList = json["items"] as? [[String : Any]] {
+                    if let json = json, let jsonData = json["data"] as? [String : Any], let movieList = MovieListModel(JSON: jsonData) {
+                        if let movieCount = movieList.movie_count, movieCount > self.movieModelList.count {
+                            self.pageNum += 1
+                            self.nextUrl = "https://yts.am/api/v2/list_movies.json?limit=10&page=" + String(self.pageNum) + "&query_term=" + self.searchKeyword
+                        }
                         DispatchQueue.main.async {
                             if self.indicator.isAnimating {
                                 self.indicator.stopAnimating()
                             }
-                            if userList.count == 0 {
-                                self.githubUserList.removeAll()
-                                self.userTableView.reloadData()
-                                self.userTableView.isHidden = true
+                            if movieList.movies.count == 0 {
+                                self.movieModelList.removeAll()
+                                self.movieTableView.reloadData()
+                                self.movieTableView.isHidden = true
                                 self.nothingLabel.isHidden = false
                             } else {
+                                self.movieModelList.append(contentsOf: movieList.movies)
                                 if self.fetchingMore {
-                                    self.githubUserList.append(contentsOf: userList)
                                     self.fetchingMore = false
-                                    self.userTableView.reloadData()
+                                    self.movieTableView.reloadData()
                                 } else {
-                                    self.githubUserList = userList
-                                    self.userTableView.reloadData()
-                                    self.userTableView.isHidden = false
+                                    self.movieTableView.reloadData()
+                                    self.movieTableView.isHidden = false
                                     self.nothingLabel.isHidden = true
                                 }
                             }
@@ -166,9 +158,9 @@ class ViewController: UIViewController {
                         if self.indicator.isAnimating {
                             self.indicator.stopAnimating()
                         }
-                        self.githubUserList.removeAll()
-                        self.userTableView.reloadData()
-                        self.userTableView.isHidden = true
+                        self.movieModelList.removeAll()
+                        self.movieTableView.reloadData()
+                        self.movieTableView.isHidden = true
                         self.nothingLabel.isHidden = false
                     }
                 }
@@ -178,67 +170,26 @@ class ViewController: UIViewController {
         }
     }
     
-    func getUserOrgList(_ urlString: String, _ indexPath: IndexPath) {
-        if let url = URL(string: urlString) {
-            let task = URLSession.shared.dataTask(with: url) { (data, response, error) in
-                guard let data = data else { return }
-                var json: [[String : Any]]?
-                do {
-                    json = try JSONSerialization.jsonObject(with: data, options: []) as? [[String : Any]]
-                    if let jsonResult = json {
-                        if jsonResult.count != 0 {
-                            DispatchQueue.main.async {
-                                if let cell = self.userTableView.cellForRow(at: indexPath) as? UserListTableCell {
-                                    cell.orgList = jsonResult
-                                    cell.orgCollectionView.reloadData()
-                                    cell.orgCollectionView.isHidden = false
-                                    self.selectedIndexPath.append(indexPath)
-                                    self.userTableView.beginUpdates()
-                                    self.userTableView.endUpdates()
-                                }
-                            }
-                        }
-                    }
-                } catch {
-                    DispatchQueue.main.async {
-                        self.selectedIndexPath.removeAll()
-                        self.userTableView.reloadData()
-                    }
-                }
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.destination is MovieDetailViewController {
+            if let view = segue.destination as? MovieDetailViewController, let index = self.selectedIndex {
+                view.movieModel = movieModelList[index]
             }
-            
-            task.resume()
         }
     }
     
-    @objc func didTapUserOrg(_ sender: UITapGestureRecognizer) {
+    @objc func didTapMovieDetail(_ sender: UITapGestureRecognizer) {
         debouncer.renewInterval()
         
         if let view = sender.view {
-            let indexPath = IndexPath(row: view.tag, section: 0)
-            if selectedIndexPath.contains(indexPath) {
-                if let arrayIndex = selectedIndexPath.firstIndex(of: indexPath) {
-                    selectedIndexPath.remove(at: arrayIndex)
-                    if let cell = userTableView.cellForRow(at: indexPath) as? UserListTableCell {
-                        cell.orgList.removeAll()
-                        cell.orgCollectionView.reloadData()
-                        cell.orgCollectionView.isHidden = true
-                        self.userTableView.beginUpdates()
-                        self.userTableView.endUpdates()
-                    }
-                }
-            } else {
-                if let githubUserModel = GithubUserModel(JSON: githubUserList[indexPath.row]), let userNickname = githubUserModel.login {
-                    let urlString = "https://api.github.com/users/" + userNickname + "/orgs"
-                    getUserOrgList(urlString, indexPath)
-                }
-            }
+            selectedIndex = view.tag
+            self.performSegue(withIdentifier: "movieDetailSegue", sender: self)
         }
     }
     
     @objc func keyboardWillShow(notification: Notification) {
         if let keyboardSize = (notification.userInfo![UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue {
-            userTableView.snp.remakeConstraints { (m) in
+            movieTableView.snp.remakeConstraints { (m) in
                 m.top.equalTo(searchTextfield.snp.bottom).offset(10)
                 m.left.right.equalTo(self.view)
                 m.bottom.equalTo(self.view).offset(-keyboardSize.height)
@@ -249,7 +200,7 @@ class ViewController: UIViewController {
     }
     
     @objc func keyboardWillHide(notification: Notification) {
-        userTableView.snp.remakeConstraints { (m) in
+        movieTableView.snp.remakeConstraints { (m) in
             m.top.equalTo(searchTextfield.snp.bottom).offset(10)
             m.left.right.bottom.equalTo(self.view)
         }
@@ -267,12 +218,14 @@ class ViewController: UIViewController {
 extension ViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         guard let searchKeyword = textField.text else { return false }
+        self.searchKeyword = searchKeyword
         debouncer.renewInterval()
         
-        userTableView.setContentOffset(.zero, animated: false)
-        selectedIndexPath.removeAll()
-        let urlString = "https://api.github.com/search/users?q=" + searchKeyword
-        getGithubUserList(urlString)
+        movieModelList.removeAll()
+        movieTableView.setContentOffset(.zero, animated: false)
+        pageNum = 1
+        let urlString = "https://yts.am/api/v2/list_movies.json?limit=10&page=" + String(pageNum) + "&query_term=" + searchKeyword
+        getMovieList(urlString)
         return true
     }
 }
@@ -294,17 +247,13 @@ extension ViewController: UITableViewDelegate {
     func beginBatchFetch() {
         if let url = nextUrl {
             fetchingMore = true
-            userTableView.reloadSections(IndexSet(integer: 1), with: .none)
-            getGithubUserList(url)
+            movieTableView.reloadSections(IndexSet(integer: 1), with: .none)
+            getMovieList(url)
         }
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        if selectedIndexPath.contains(indexPath) {
-            return 75 + 43
-        } else {
-            return 75
-        }
+        return 90
     }
 }
 
@@ -317,7 +266,7 @@ extension ViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if section == 0 {
-            return githubUserList.count
+            return movieModelList.count
         } else if section == 1, fetchingMore {
             return 1
         }
@@ -327,32 +276,26 @@ extension ViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if indexPath.section == 0 {
-            let cell = tableView.dequeueReusableCell(withIdentifier: userCell, for: indexPath) as! UserListTableCell
+            let cell = tableView.dequeueReusableCell(withIdentifier: userCell, for: indexPath) as! MovieListTableCell
             cell.selectionStyle = .none
-            if let githubUserModel = GithubUserModel(JSON: githubUserList[indexPath.row]) {
-                let userNameLabelTap = UITapGestureRecognizer(target: self, action: #selector(didTapUserOrg(_:)))
-                let userProfileImageViewTap = UITapGestureRecognizer(target: self, action: #selector(didTapUserOrg(_:)))
-                cell.userNameLabel.text = githubUserModel.login
-                cell.userNameLabel.tag = indexPath.row
-                cell.userNameLabel.isUserInteractionEnabled = true
-                cell.userNameLabel.addGestureRecognizer(userNameLabelTap)
-                if let scoreString = githubUserModel.score?.description {
-                    cell.scoreLabel.text = "score: " + scoreString
-                } else {
-                    cell.scoreLabel.text = "score: -"
-                }
-                if let urlString = githubUserModel.avatar_url, let url = URL(string: urlString) {
-                    cell.userProfileImageView.kf.setImage(with: url, options: [ .cacheMemoryOnly ])
-                }
-                cell.userProfileImageView.tag = indexPath.row
-                cell.userProfileImageView.isUserInteractionEnabled = true
-                cell.userProfileImageView.addGestureRecognizer(userProfileImageViewTap)
-                if selectedIndexPath.contains(indexPath) {
-                    cell.orgCollectionView.isHidden = false
-                } else {
-                    cell.orgCollectionView.isHidden = true
-                }
+            let movieModel = movieModelList[indexPath.row]
+            cell.movieTitleLabel.text = movieModel.title
+            let movieTitleLabelTap = UITapGestureRecognizer(target: self, action: #selector(didTapMovieDetail(_:)))
+            let movieImageViewTap = UITapGestureRecognizer(target: self, action: #selector(didTapMovieDetail(_:)))
+            cell.movieTitleLabel.tag = indexPath.row
+            cell.movieTitleLabel.isUserInteractionEnabled = true
+            cell.movieTitleLabel.addGestureRecognizer(movieTitleLabelTap)
+            if let rating = movieModel.rating {
+                cell.ratingLabel.text = "rating: " + String(rating)
+            } else {
+                cell.ratingLabel.text = "rating: -"
             }
+            if let urlString = movieModel.small_cover_image, let url = URL(string: urlString) {
+                cell.movieImageView.kf.setImage(with: url, options: [ .cacheMemoryOnly ])
+            }
+            cell.movieImageView.tag = indexPath.row
+            cell.movieImageView.isUserInteractionEnabled = true
+            cell.movieImageView.addGestureRecognizer(movieImageViewTap)
             
             return cell
         } else {
